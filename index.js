@@ -1,5 +1,4 @@
 'use strict'
-const getSocketHandleAddress = require('getsockethandleaddress')
 
 const {
 	getsockopt: _getsockopt,
@@ -11,7 +10,8 @@ const fd = (socket) => {
 		throw new Error(`\
 Socket has no file descriptor yet. Did you call listen() or bind()?`)
 	}
-	return getSocketHandleAddress.getAddress(socket._handle)
+
+	return socket._handle.fd > 0?socket._handle.fd:socket._handle;
 }
 
 const getsockopt = (socket, level, flagName) => {
