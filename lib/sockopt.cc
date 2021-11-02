@@ -1,7 +1,15 @@
 #include <napi.h>
 #include <errno.h>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
 #include <sys/types.h>
 #include <sys/socket.h>
+#endif
+
 
 Napi::Value Getsockopt(const Napi::CallbackInfo& args) {
 	Napi::Env env = args.Env();
@@ -18,6 +26,15 @@ Napi::Value Getsockopt(const Napi::CallbackInfo& args) {
 
 	int * val = (int *) malloc(sizeof(int));
 	socklen_t len = sizeof(int);
+#ifdef _WIN32	
+	if (0 != getsockopt(socket, level, name, (char *) val, &len)) {
+		char * msg = (char *) malloc(sizeof(char) * 100);
+		sprintf(msg, "getsockopt failed: %s (%d)", strerror(errno), errno);
+		// todo: expose `errno`
+		Napi::TypeError::New(env, msg).ThrowAsJavaScriptException();
+		return env.Null();
+	}
+#else
 	if (0 != getsockopt(socket, level, name, (void *) val, &len)) {
 		char * msg = (char *) malloc(sizeof(char) * 100);
 		sprintf(msg, "getsockopt failed: %s (%d)", strerror(errno), errno);
@@ -25,7 +42,7 @@ Napi::Value Getsockopt(const Napi::CallbackInfo& args) {
 		Napi::TypeError::New(env, msg).ThrowAsJavaScriptException();
 		return env.Null();
 	}
-
+#endif
 	return Napi::Number::New(env, * val);
 }
 
@@ -48,13 +65,21 @@ Napi::Value Setsockopt(const Napi::CallbackInfo& args) {
 	int name = args[2].As<Napi::Number>().Int32Value();
 	int new_val = args[3].As<Napi::Number>().Int32Value();
 
+#ifdef _WIN32
+	if (0 != setsockopt(socket, level, name, (const char *)&new_val, (socklen_t) sizeof(new_val))) {
+		char * msg = (char *) malloc(sizeof(char) * 100);
+		sprintf(msg, "setsockopt failed: %s (%d)", strerror(errno), errno);
+		// todo: expose `errno`
+		Napi::TypeError::New(env, msg).ThrowAsJavaScriptException();
+	}
+#else
 	if (0 != setsockopt(socket, level, name, (void *)&new_val, (socklen_t) sizeof(new_val))) {
 		char * msg = (char *) malloc(sizeof(char) * 100);
 		sprintf(msg, "setsockopt failed: %s (%d)", strerror(errno), errno);
 		// todo: expose `errno`
 		Napi::TypeError::New(env, msg).ThrowAsJavaScriptException();
 	}
-
+#endif
 	return env.Null();
 }
 
